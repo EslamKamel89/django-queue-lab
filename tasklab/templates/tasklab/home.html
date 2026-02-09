@@ -23,11 +23,25 @@
         <p class="text-sm opacity-70">Async task trigger demo</p>
       </header>
 
-      <button @click="trigger" :disabled="loading"
-        class="w-full flex items-center justify-center gap-2 text-base font-semibold py-3 rounded-xl transition active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed">
-        <i class="bi" :class="loading ? 'bi-arrow-repeat animate-spin' : 'bi-lightning-charge-fill'"></i>
-        <span x-text="loading ? 'Processing...' : 'Trigger Task'"></span>
-      </button>
+      <div class="space-y-3">
+        <button @click="trigger" :disabled="loading"
+          class="w-full flex items-center justify-center gap-2 text-base font-semibold py-3 rounded-xl transition active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed">
+          <i class="bi" :class="loading ? 'bi-arrow-repeat animate-spin' : 'bi-lightning-charge-fill'"></i>
+          <span x-text="loading ? 'Processing...' : 'Trigger Task'"></span>
+        </button>
+
+        <button @click="checkHealth"
+          class="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-neutral-600/40">
+          <i class="bi bi-heart-pulse-fill"></i>
+          Check Health
+        </button>
+      </div>
+
+      <p x-show="healthy" x-transition
+        class="text-sm text-center text-green-400 flex items-center justify-center gap-2">
+        <i class="bi bi-check2-circle"></i>
+        The system is healthy
+      </p>
 
       <p x-show="loading" x-transition class="text-sm text-center opacity-80">
         Please wait while the task is running...
@@ -58,12 +72,12 @@
         loading: false,
         error: null,
         res: null,
+        healthy: false,
         async trigger() {
           this.loading = true;
           this.error = null;
           this.res = null;
           try {
-
             const res = await fetch("/", {
               method: "POST",
             });
@@ -80,6 +94,16 @@
             this.loading = false;
           }
         },
+        async checkHealth() {
+          try {
+            const res = await fetch('/health')
+            this.healthy = res.ok;
+          } catch (e) { } finally {
+            setTimeout(() => {
+              this.healthy = false;
+            }, 700)
+          }
+        }
       };
     }
   </script>

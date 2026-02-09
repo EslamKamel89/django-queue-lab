@@ -16,3 +16,8 @@ class HomeView(View):
     def post(self, request: HttpRequest):
         sleep(5)
         return JsonResponse({"slow_task": "finished"})
+
+
+class HealthView(View):
+    def get(self, request: HttpRequest):
+        return JsonResponse({"status": "ok"})
