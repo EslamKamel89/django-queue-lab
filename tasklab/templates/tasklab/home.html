@@ -12,7 +12,7 @@
 </head>
 
 <body class="min-h-screen flex items-center justify-center px-4">
-  <main class="w-full max-w-lg">
+  <main class="w-full max-w-xl">
     <section x-data="app()" class="space-y-6 border border-neutral-700/40 rounded-2xl p-8 shadow-2xl">
 
       <header class="text-center space-y-2">
@@ -20,14 +20,14 @@
           <i class="bi bi-kanban-fill"></i>
           TaskLab
         </h1>
-        <p class="text-sm opacity-70">Async task trigger demo</p>
+        <p class="text-sm opacity-70">Async background task demo</p>
       </header>
 
       <div class="space-y-3">
         <button @click="trigger" :disabled="loading"
           class="w-full flex items-center justify-center gap-2 text-base font-semibold py-3 rounded-xl transition active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed">
           <i class="bi" :class="loading ? 'bi-arrow-repeat animate-spin' : 'bi-lightning-charge-fill'"></i>
-          <span x-text="loading ? 'Processing...' : 'Trigger Task'"></span>
+          <span x-text="loading ? 'Triggering...' : 'Trigger Task'"></span>
         </button>
 
         <button @click="checkHealth"
@@ -40,18 +40,24 @@
       <p x-show="healthy" x-transition
         class="text-sm text-center text-green-400 flex items-center justify-center gap-2">
         <i class="bi bi-check2-circle"></i>
-        The system is healthy
+        System is healthy
       </p>
 
       <p x-show="loading" x-transition class="text-sm text-center opacity-80">
-        Please wait while the task is running...
+        Waiting for background task to complete...
       </p>
+
+      <div x-show="taskId" x-transition
+        class="text-sm text-center border border-neutral-700/40 rounded-lg p-3 bg-black/20">
+        <span class="opacity-70">Task ID:</span>
+        <span class="font-mono text-xs break-all" x-text="taskId"></span>
+      </div>
 
       <div x-show="res" x-transition class="space-y-2 text-left">
         <h3 class="text-sm font-semibold opacity-70 flex items-center gap-2">
-          <i class="bi bi-check-circle-fill"></i> Response
+          <i class="bi bi-check-circle-fill"></i> Result
         </h3>
-        <pre class="text-xs overflow-auto max-h-52 border border-green-700/40 rounded-lg p-3"
+        <pre class="text-xs overflow-auto max-h-52 border border-green-700/40 rounded-lg p-3 bg-black/20"
           x-text="JSON.stringify(res ?? {}, null, 2)"></pre>
       </div>
 
@@ -59,7 +65,7 @@
         <h3 class="text-sm font-semibold opacity-70 flex items-center gap-2">
           <i class="bi bi-exclamation-triangle-fill"></i> Error
         </h3>
-        <pre class="text-xs overflow-auto max-h-52 border border-red-700/40 rounded-lg p-3"
+        <pre class="text-xs overflow-auto max-h-52 border border-red-700/40 rounded-lg p-3 bg-black/20"
           x-text="JSON.stringify(error ?? {}, null, 2)"></pre>
       </div>
 
@@ -67,22 +73,38 @@
   </main>
 
   <script>
+
+    async function sleep(seconds) {
+      return new Promise((r) => {
+        setTimeout(r, seconds * 1000)
+      })
+    }
+
     function app() {
       return {
         loading: false,
         error: null,
         res: null,
         healthy: false,
+        taskId: null,
         async trigger() {
           this.loading = true;
           this.error = null;
           this.res = null;
+          this.taskId = null;
           try {
             const res = await fetch("/", {
               method: "POST",
             });
+            this.loading = false;
             if (res.ok) {
-              this.res = await res.json();
+              const json = await res.json();
+              this.taskId = json.task_id
+              for (i in Array.from({ length: 5 }, (_, i) => i)) {
+                await sleep(5)
+                if (this.res) break;
+                await this.checkTask();
+              }
             } else {
               this.error = { message: "Something went wrong" }
             }
@@ -102,6 +124,17 @@
             setTimeout(() => {
               this.healthy = false;
             }, 700)
+          }
+        },
+        async checkTask() {
+          try {
+            if (!this.taskId) return;
+            const res = await fetch(`/slow-task/${this.taskId}`)
+            if (res.ok) {
+              this.res = (await res.json())?.data?.message
+            }
+          } catch (e) {
+            console.log(e)
           }
         }
       };
