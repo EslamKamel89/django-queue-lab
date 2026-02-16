@@ -1,6 +1,8 @@
 import json
 from time import sleep
+from typing import cast
 
+from celery.result import AsyncResult
 from django.http import HttpRequest, HttpResponse
 from django.http.response import JsonResponse
 from django.shortcuts import render
@@ -18,11 +20,8 @@ class HomeView(View):
         return render(request, "tasklab/home.html")
 
     def post(self, request: HttpRequest):
-        task_id = slow_task.delay("hello")  # type: ignore
-        print(task_id.__str__())
-        return JsonResponse(
-            {"message": "Slow task triggered", "task_id": task_id.__str__()}
-        )
+        task: AsyncResult = slow_task.delay("hello")  # type: ignore
+        return JsonResponse({"message": "Slow task triggered", "task_id": task.id})
 
 
 class HealthView(View):
@@ -32,5 +31,8 @@ class HealthView(View):
 
 class SlowTaskResultView(View):
     def get(self, request: HttpRequest, task_id: str):
-        task = TaskResult.objects.get(task_id=task_id)
-        return JsonResponse({"data": json.loads(task.result or "{}")})
+        # task = TaskResult.objects.get(task_id=task_id)
+        # result = json.loads(task.result or "{}")
+        task = AsyncResult(task_id)
+        result = task.result or {}
+        return JsonResponse({"data": result})
